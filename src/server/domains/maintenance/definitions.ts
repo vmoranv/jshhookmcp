@@ -1,0 +1,258 @@
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+
+export const tokenBudgetTools: Tool[] = [
+  {
+    name: 'get_token_budget_stats',
+    description: `Get current token budget usage statistics.
+
+Returns:
+- Current token consumption estimate
+- Tool call counts and top token consumers
+- Active warnings and optimization suggestions
+
+When to use:
+- After sessions with many large scripts (>10K tokens each)
+- When responses feel slow or context seems full
+- Before running AI analysis tools
+- When approaching MCP context limits
+
+Tip: Use manual_token_cleanup when usage exceeds 20-30%.
+
+Response fields:
+- currentUsage: estimated token count (approximate)
+- maxTokens: context limit (200K)
+- usagePercentage: utilization ratio
+- toolCallCount: number of tool invocations
+- topTools: highest token-consuming tools
+- warnings: active threshold alerts
+- recentCalls: recent tool activity
+- suggestions: recommended actions
+
+Example:
+\`\`\`
+get_token_budget_stats()
+-> Returns current token budget report
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  {
+    name: 'manual_token_cleanup',
+    description: `Manually trigger token budget cleanup to free context space.
+
+Actions performed:
+- Clears DetailedDataManager stale entries
+- Removes entries older than 5 minutes
+- Resets internal token counters
+
+When to use:
+- Token usage exceeds 90%
+- Context feels sluggish or slow
+- Before a long analysis session
+
+Effect:
+- Frees 10-30% of token budget
+- Preserves recent data
+- Does not affect page state
+
+Response fields:
+- before: usage before cleanup
+- after: usage after cleanup
+- freed: tokens freed
+
+Example:
+\`\`\`
+manual_token_cleanup()
+-> Triggers cleanup, frees token budget
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  {
+    name: 'reset_token_budget',
+    description: `Reset all token budget counters to zero (hard reset).
+
+Actions performed:
+- Resets token counter to 0
+- Clears all tool call history
+- Resets all warning thresholds
+
+Warning:
+- This is a destructive operation
+- All token tracking history will be lost
+- Running analysis tasks will be interrupted
+
+When to use:
+- Starting a completely new analysis session
+- After a token budget anomaly
+- Periodic maintenance reset
+
+Prefer manual_token_cleanup for routine cleanup. Only use reset_token_budget when MCP session state is corrupted.
+
+Example:
+\`\`\`
+reset_token_budget()
+-> Resets all token budget counters
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+];
+
+export const cacheTools: Tool[] = [
+  {
+    name: 'get_cache_stats',
+    description: `Get cache statistics for all internal caches.
+
+Returns information about:
+- Total entries and size across all caches
+- Per-cache hit rates and TTL configuration
+- Actionable cleanup recommendations
+
+Response fields:
+- totalEntries: total cached items
+- totalSize: total size in bytes
+- totalSizeMB: total size in MB
+- hitRate: overall cache hit ratio
+- caches: per-cache breakdown
+  - name: cache name
+  - entries: item count
+  - size: size in bytes
+  - sizeMB: size in MB
+  - hitRate: hit ratio
+  - ttl: time-to-live in ms
+- recommendations: suggested actions
+
+Example:
+\`\`\`typescript
+get_cache_stats()
+{
+  "totalEntries": 150,
+  "totalSize": 52428800,
+  "totalSizeMB": "50.00",
+  "hitRate": 0.75,
+  "caches": [
+    {
+      "name": "DetailedDataManager",
+      "entries": 50,
+      "size": 2621440,
+      "sizeMB": "2.50",
+      "hitRate": 0.8,
+      "ttl": 600000
+    },
+    {
+      "name": "CodeCache",
+      "entries": 80,
+      "size": 41943040,
+      "sizeMB": "40.00",
+      "hitRate": 0.7
+    },
+    {
+      "name": "CodeCompressor",
+      "entries": 20,
+      "size": 7864320,
+      "sizeMB": "7.50",
+      "hitRate": 0.75
+    }
+  ],
+  "recommendations": [
+    "Cache health is good. No action needed."
+  ]
+}
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  {
+    name: 'smart_cache_cleanup',
+    description: `Intelligently clean caches to free memory while preserving hot data.
+
+Cleanup strategy:
+1. Evicts least-recently-used entries first
+2. Removes entries below hit threshold (< average * 30%)
+3. Clears entries older than 2 hours
+
+Parameter:
+- targetSize: target size in bytes (optional)
+  - Default: 70% of maximum (350MB)
+  - Automatic: triggered when usage > 70%
+
+Response fields:
+- before: size before cleanup (bytes)
+- after: size after cleanup (bytes)
+- freed: bytes freed
+- freedPercentage: percentage reduction
+
+When to use:
+- Cache usage > 70%
+- Token usage > 80%
+- Before a memory-intensive analysis
+
+Example:
+\`\`\`typescript
+smart_cache_cleanup()
+{
+  "before": 419430400,
+  "after": 314572800,
+  "freed": 104857600,
+  "freedPercentage": 21
+}
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        targetSize: {
+          type: 'number',
+          description: 'Target size in bytes (optional, defaults to 70% of maximum).',
+        },
+      },
+    },
+  },
+
+  {
+    name: 'clear_all_caches',
+    description: `Clear all internal caches completely.
+
+Actions performed:
+- Clears all cached code scripts
+- Resets all hit rate counters
+- Frees all allocated cache memory
+
+Warning: This is a destructive operation. All cached data will be lost:
+- DetailedDataManager (hook capture data)
+- CodeCache (collected scripts)
+- CodeCompressor (compressed code)
+
+When to use:
+- Starting a completely fresh session
+- After cache corruption
+- When memory usage is critically high
+- Periodic maintenance
+
+Prefer smart_cache_cleanup for routine maintenance to preserve hot data.
+
+Example:
+\`\`\`typescript
+clear_all_caches()
+{
+  "success": true,
+  "message": "All caches cleared"
+}
+\`\`\``,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+];

@@ -1,0 +1,253 @@
+import { logger } from './logger.js';
+import { DetailedDataManager } from './DetailedDataManager.js';
+
+export interface ToolCallRecord {
+  toolName: string;
+  timestamp: number;
+  requestSize: number;
+  responseSize: number;
+  estimatedTokens: number;
+  cumulativeTokens: number;
+}
+
+export interface TokenBudgetStats {
+  currentUsage: number;
+  maxTokens: number;
+  usagePercentage: number;
+  toolCallCount: number;
+  topTools: Array<{ tool: string; tokens: number; percentage: number }>;
+  warnings: number[];
+  recentCalls: ToolCallRecord[];
+  suggestions: string[];
+}
+
+export class TokenBudgetManager {
+  private static instance: TokenBudgetManager;
+
+  private readonly MAX_TOKENS = 200000;
+  private readonly WARNING_THRESHOLDS = [0.8, 0.9, 0.95];
+  private readonly BYTES_PER_TOKEN = 4;
+  private readonly AUTO_CLEANUP_THRESHOLD = 0.9;
+  private readonly HISTORY_RETENTION = 5 * 60 * 1000;
+
+  private currentUsage = 0;
+  private toolCallHistory: ToolCallRecord[] = [];
+  private warnings = new Set<number>();
+  private sessionStartTime = Date.now();
+
+  private constructor() {
+    logger.info('TokenBudgetManager initialized');
+  }
+
+  static getInstance(): TokenBudgetManager {
+    if (!this.instance) {
+      this.instance = new TokenBudgetManager();
+    }
+    return this.instance;
+  }
+
+  recordToolCall(toolName: string, request: any, response: any): void {
+    try {
+      const requestSize = this.calculateSize(request);
+      const responseSize = this.calculateSize(response);
+      const totalSize = requestSize + responseSize;
+      const estimatedTokens = this.estimateTokens(totalSize);
+
+      this.currentUsage += estimatedTokens;
+
+      const record: ToolCallRecord = {
+        toolName,
+        timestamp: Date.now(),
+        requestSize,
+        responseSize,
+        estimatedTokens,
+        cumulativeTokens: this.currentUsage,
+      };
+      this.toolCallHistory.push(record);
+
+      logger.debug(
+        `Token usage: ${this.currentUsage}/${this.MAX_TOKENS} (${this.getUsagePercentage()}%) | ` +
+          `Tool: ${toolName} | Size: ${(totalSize / 1024).toFixed(1)}KB | Tokens: ${estimatedTokens}`
+      );
+
+      this.checkWarnings();
+
+      if (this.shouldAutoCleanup()) {
+        this.autoCleanup();
+      }
+    } catch (error) {
+      logger.error('Failed to record tool call:', error);
+    }
+  }
+
+  private calculateSize(data: any): number {
+    try {
+      return JSON.stringify(data).length;
+    } catch (error) {
+      logger.warn('Failed to calculate data size:', error);
+      return 0;
+    }
+  }
+
+  private estimateTokens(bytes: number): number {
+    return Math.ceil(bytes / this.BYTES_PER_TOKEN);
+  }
+
+  getUsagePercentage(): number {
+    return Math.round((this.currentUsage / this.MAX_TOKENS) * 100);
+  }
+
+  private checkWarnings(): void {
+    const ratio = this.currentUsage / this.MAX_TOKENS;
+
+    for (const threshold of this.WARNING_THRESHOLDS) {
+      if (ratio >= threshold && !this.warnings.has(threshold)) {
+        this.emitWarning(threshold);
+        this.warnings.add(threshold);
+      }
+    }
+  }
+
+  private emitWarning(threshold: number): void {
+    const percentage = Math.round(threshold * 100);
+    const remaining = this.MAX_TOKENS - this.currentUsage;
+
+    logger.warn(
+      `Token Budget Warning: ${percentage}% used! ` +
+        `(${this.currentUsage}/${this.MAX_TOKENS}, ${remaining} tokens remaining)`
+    );
+
+    if (threshold >= 0.95) {
+      logger.warn(' CRITICAL: Consider clearing caches or starting a new session!');
+    } else if (threshold >= 0.9) {
+      logger.warn('HIGH: Auto-cleanup will trigger soon. Consider using summary modes.');
+    } else if (threshold >= 0.8) {
+      logger.warn('MODERATE: Monitor usage. Use get_token_budget_stats for details.');
+    }
+  }
+
+  private shouldAutoCleanup(): boolean {
+    const ratio = this.currentUsage / this.MAX_TOKENS;
+    return ratio >= this.AUTO_CLEANUP_THRESHOLD;
+  }
+
+  private autoCleanup(): void {
+    logger.info(' Auto-cleanup triggered at 90% usage...');
+
+    const beforeUsage = this.currentUsage;
+
+    const detailedDataManager = DetailedDataManager.getInstance();
+    detailedDataManager.clear();
+    logger.info(' Cleared DetailedDataManager cache');
+
+    const cutoff = Date.now() - this.HISTORY_RETENTION;
+    const beforeCount = this.toolCallHistory.length;
+    this.toolCallHistory = this.toolCallHistory.filter((call) => call.timestamp > cutoff);
+    const removedCount = beforeCount - this.toolCallHistory.length;
+    logger.info(` Removed ${removedCount} old tool call records`);
+
+    this.recalculateUsage();
+
+    const afterUsage = this.currentUsage;
+    const freed = beforeUsage - afterUsage;
+    const freedPercentage = Math.round((freed / this.MAX_TOKENS) * 100);
+
+    logger.info(
+      ` Cleanup complete! Freed ${freed} tokens (${freedPercentage}%). ` +
+        `Usage: ${afterUsage}/${this.MAX_TOKENS} (${this.getUsagePercentage()}%)`
+    );
+
+    const newRatio = afterUsage / this.MAX_TOKENS;
+    this.warnings = new Set(Array.from(this.warnings).filter((threshold) => newRatio >= threshold));
+  }
+
+  private recalculateUsage(): void {
+    this.currentUsage = this.toolCallHistory.reduce((sum, call) => sum + call.estimatedTokens, 0);
+  }
+
+  getStats(): TokenBudgetStats & { sessionStartTime: number } {
+    const toolUsage = new Map<string, number>();
+    for (const call of this.toolCallHistory) {
+      const current = toolUsage.get(call.toolName) || 0;
+      toolUsage.set(call.toolName, current + call.estimatedTokens);
+    }
+
+    const topTools = Array.from(toolUsage.entries())
+      .map(([tool, tokens]) => ({
+        tool,
+        tokens,
+        percentage: Math.round((tokens / this.currentUsage) * 100),
+      }))
+      .sort((a, b) => b.tokens - a.tokens)
+      .slice(0, 10);
+
+    const suggestions = this.generateSuggestions(topTools);
+
+    const recentCalls = this.toolCallHistory.slice(-20);
+
+    return {
+      currentUsage: this.currentUsage,
+      maxTokens: this.MAX_TOKENS,
+      usagePercentage: this.getUsagePercentage(),
+      toolCallCount: this.toolCallHistory.length,
+      topTools,
+      warnings: Array.from(this.warnings).map((t) => Math.round(t * 100)),
+      recentCalls,
+      suggestions,
+      sessionStartTime: this.sessionStartTime,
+    };
+  }
+
+  private generateSuggestions(
+    topTools: Array<{ tool: string; tokens: number; percentage: number }>
+  ): string[] {
+    const suggestions: string[] = [];
+    const ratio = this.currentUsage / this.MAX_TOKENS;
+
+    if (ratio >= 0.95) {
+      suggestions.push(' CRITICAL: Clear all caches immediately or start a new session');
+    } else if (ratio >= 0.9) {
+      suggestions.push('HIGH: Auto-cleanup triggered. Consider manual cleanup for better control');
+    } else if (ratio >= 0.8) {
+      suggestions.push('MODERATE: Monitor usage closely. Use summary modes for large data');
+    }
+
+    for (const { tool, percentage } of topTools) {
+      if (percentage > 30) {
+        if (tool.includes('collect_code')) {
+          suggestions.push(
+            ` ${tool} uses ${percentage}% tokens. Try smartMode="summary" or "priority"`
+          );
+        } else if (tool.includes('get_script_source')) {
+          suggestions.push(` ${tool} uses ${percentage}% tokens. Try preview=true first`);
+        } else if (tool.includes('network_get_requests')) {
+          suggestions.push(` ${tool} uses ${percentage}% tokens. Reduce limit or use filters`);
+        } else if (tool.includes('page_evaluate')) {
+          suggestions.push(
+            ` ${tool} uses ${percentage}% tokens. Query specific properties instead of full objects`
+          );
+        }
+      }
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push(' Token usage is healthy. Continue monitoring.');
+    }
+
+    return suggestions;
+  }
+
+  manualCleanup(): void {
+    logger.info(' Manual cleanup requested...');
+    this.autoCleanup();
+  }
+
+  reset(): void {
+    logger.info(' Resetting token budget...');
+    this.currentUsage = 0;
+    this.toolCallHistory = [];
+    this.warnings.clear();
+    this.sessionStartTime = Date.now();
+    logger.info(' Token budget reset complete');
+  }
+}

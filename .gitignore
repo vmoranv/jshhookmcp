@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+
+# Lock files (machine-generated, not tracked)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Cache directories
+.cache/
+.temp/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage & artifacts
+coverage/
+.nyc_output/
+test-screenshots/
+screenshots/
+
+# Puppeteer browser downloads
+.local-chromium/
+.local-firefox/
+
+# Session data
+sessions/
+*.session
+
+# Debug artifacts
+debug/
+*.debug
+
+# Ad-hoc test scripts (not the main tests/ suite)
+test/
+tests/
+
+# Tool-generated spec/change directories
+openspec/
+
+# Temporary integration test scripts
+test_integration.mjs
+
+# Claude  Code local config
+.claude/
+
+# Other AI/tool local configs
+.augment/

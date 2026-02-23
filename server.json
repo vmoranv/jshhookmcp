@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.vmoranv/jshhookmcp",
+  "description": "AI-powered JavaScript reverse engineering tool with 80+ MCP tools for browser automation, debugging, network monitoring, and intelligent hooking",
+  "version": "0.1.0",
+  "homepage": "https://github.com/vmoranv/jshhookmcp",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "javascript",
+    "reverse-engineering",
+    "browser-automation",
+    "debugging",
+    "deobfuscation",
+    "crypto-detection",
+    "hook",
+    "ai-powered",
+    "puppeteer",
+    "chrome-devtools",
+    "network-monitoring",
+    "anti-detection",
+    "captcha"
+  ],
+  "packages": [
+    {
+      "registry_type": "npm",
+      "identifier": "jshhookmcp",
+      "version": "0.1.0"
+    }
+  ],
+  "author": {
+    "name": "vmoranv",
+    "url": "https://github.com/vmoranv"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vmoranv/jshhookmcp.git"
+  }
+}

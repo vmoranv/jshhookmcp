@@ -1,0 +1,104 @@
+{
+  "name": "jshhookmcp",
+  "version": "0.1.1",
+  "packageManager": "pnpm@10.28.2",
+  "description": "AI-powered JavaScript reverse engineering tool with 80+ MCP tools for browser automation, debugging, network monitoring, and intelligent hooking",
+  "mcpName": "io.github.vmoranv/jshhookmcp",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "jshhookmcp": "dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vmoranv/jshhookmcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vmoranv/jshhookmcp/issues"
+  },
+  "homepage": "https://github.com/vmoranv/jshhookmcp#readme",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest --config jest.config.cjs --runInBand --forceExit",
+    "test:integration": "jest --config jest.config.cjs tests/integration",
+    "test:watch": "jest --config jest.config.cjs --watch",
+    "verify": "tsx scripts/verify-modules.ts",
+    "verify:build": "npm run build && npm run verify",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepare": "npm run build",
+    "check": "npm run lint && npm run build && npm run verify",
+    "package": "npm run build && npm pack",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "javascript",
+    "reverse-engineering",
+    "hook",
+    "hooking",
+    "deobfuscation",
+    "ai",
+    "claude",
+    "puppeteer",
+    "chrome-devtools",
+    "debugger",
+    "web-scraping",
+    "anti-detection",
+    "captcha",
+    "browser-automation",
+    "network-monitoring",
+    "ast",
+    "obfuscation",
+    "cryptography-detection",
+    "code-analysis"
+  ],
+  "author": {
+    "name": "vmoranv",
+    "url": "https://github.com/vmoranv"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@babel/generator": "^7.26.5",
+    "@babel/parser": "^7.26.3",
+    "@babel/traverse": "^7.26.5",
+    "@babel/types": "^7.26.3",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "camoufox-js": "^0.9.1",
+    "chalk": "^5.4.1",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "openai": "^4.73.0",
+    "ora": "^8.1.1",
+    "rebrowser-puppeteer": "^24.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.6",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^9.17.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "puppeteer"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
