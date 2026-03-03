@@ -226,6 +226,15 @@ MCP_TRANSPORT=http MCP_AUTH_TOKEN=mysecret node dist/index.js
 }
 ```
 
+### codex
+
+```toml
+[mcp_servers.jshook]
+type = "stdio"
+command = "node"
+args = ['path/to/jshookmcp/dist/index.js']
+```
+
 ### Streamable HTTP (remote / MCP current revision)
 
 ```bash
