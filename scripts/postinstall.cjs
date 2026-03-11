@@ -19,10 +19,19 @@ if (!fs.existsSync(localBin)) {
   process.exit(0);
 }
 
-const result = spawnSync(localBin, ['install'], { stdio: 'inherit' });
+const result = spawnSync(localBin, ['install'], {
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+});
 
-if (result.error || result.status !== 0) {
-  console.warn('[postinstall] lefthook install failed; skipping git hook installation.');
+if (result.error) {
+  console.warn(
+    `[postinstall] lefthook install failed to spawn: ${result.error.message}; skipping git hook installation.`
+  );
+} else if (result.status !== 0) {
+  console.warn(
+    `[postinstall] lefthook install exited with status ${result.status}; skipping git hook installation.`
+  );
 }
 
 process.exit(0);
